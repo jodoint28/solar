@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Florida Solar Savings — Cotización Solar Gratis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0E2136;
+    --sun1:#FF8A3D;
+    --sun2:#FFC24B;
+    --teal:#0FA792;
+    --sand:#FDF9F1;
+    --ink:#0E2136;
+    --white:#FFFFFF;
+    --line:rgba(14,33,54,0.12);
+    --radius:14px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    font-family:'IBM Plex Sans', sans-serif;
+    background:
+      radial-gradient(120% 90% at 50% -20%, #FFF3E1 0%, var(--sand) 55%);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  h1,h2,.display{ font-family:'Space Grotesk', sans-serif; letter-spacing:-0.01em; }
+  button{ font-family:inherit; }
+
+  main{
+    width:100%;
+    max-width:440px;
+    padding: clamp(14px,3vh,26px) 18px 16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+  }
+
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:14px;
+  }
+  .house-logo{ width:38px; height:38px; flex:none; }
+  .brand-name{
+    font-size:16px; font-weight:700;
+    letter-spacing:0.01em;
+    color:var(--navy);
+    text-transform:uppercase;
+    line-height:1.15;
+    text-align:left;
+  }
+  .brand-name .accent{
+    background:linear-gradient(90deg, var(--sun1), var(--sun2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  h1.headline{
+    font-size:clamp(19px,5vw,23px);
+    line-height:1.22;
+    font-weight:700;
+    margin:0 0 6px;
+  }
+  p.subline{
+    font-size:13.5px;
+    color:#5b6b7d;
+    margin:0 0 16px;
+    line-height:1.45;
+  }
+
+  .quiz-card{
+    width:100%;
+    background:var(--white);
+    border-radius:18px;
+    border:1px solid var(--line);
+    box-shadow: 0 18px 40px -20px rgba(14,33,54,0.32);
+    overflow:hidden;
+    text-align:left;
+  }
+
+  /* ---------- Progress bar (segmented + pulse) ---------- */
+  .progress-wrap{
+    padding:16px 18px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .progress-top{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:9px;
+  }
+  .progress-title{
+    font-size:11px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase;
+    color:#7C8BA0;
+  }
+  .progress-pct{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px; font-weight:700; color:var(--sun1);
+  }
+  .segments{ display:flex; gap:5px; }
+  .segment{
+    flex:1; height:8px; border-radius:999px;
+    background:var(--line);
+    overflow:hidden;
+    position:relative;
+  }
+  .segment .fill{
+    position:absolute; inset:0;
+    background:linear-gradient(90deg, var(--sun1), var(--sun2));
+    width:0%;
+    border-radius:999px;
+    transition: width .5s cubic-bezier(.4,0,.2,1);
+  }
+  .segment.active .fill{ animation:shimmer 1.1s ease-in-out infinite; }
+  @keyframes shimmer{
+    0%,100%{ filter:brightness(1); }
+    50%{ filter:brightness(1.18); }
+  }
+
+  .quiz-body{ padding:18px; min-height:238px; display:flex; flex-direction:column; }
+  .quiz-body h2{ font-size:17.5px; margin:0 0 5px; font-weight:600; line-height:1.28; }
+  .quiz-body .helper{ font-size:13px; color:#5b6b7d; margin:0 0 14px; }
+
+  .opt-grid{ display:grid; gap:8px; }
+  .opt-btn{
+    text-align:left;
+    border:1.5px solid var(--line);
+    background:var(--white);
+    border-radius:var(--radius);
+    padding:12px 14px;
+    font-size:14px; font-weight:500;
+    cursor:pointer;
+    transition: border-color .15s ease, background .15s ease, transform .1s ease;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .opt-btn:hover{ border-color:var(--sun1); background:#FFF7EE; }
+  .opt-btn:active{ transform: scale(0.99); }
+  .opt-btn .arrow{ opacity:0; transition:opacity .15s ease; color:var(--sun1); }
+  .opt-btn:hover .arrow{ opacity:1; }
+
+  .field{ display:flex; flex-direction:column; gap:5px; margin-bottom:11px; }
+  .field label{ font-size:12px; font-weight:600; color:#3d4c5e; }
+  .field input, .field select{
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:14px;
+    font-family:inherit;
+    outline:none;
+    transition:border-color .15s ease;
+    background:var(--white);
+    color:var(--ink);
+  }
+  .field input:focus, .field select:focus{ border-color:var(--sun1); }
+  .field .err{ font-size:11.5px; color:#C0432C; display:none; }
+  .field.invalid input{ border-color:#C0432C; }
+  .field.invalid .err{ display:block; }
+
+  .row-2{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  @media (max-width:380px){ .row-2{ grid-template-columns:1fr; } }
+
+  .nav-row{
+    margin-top:auto; padding-top:14px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .btn-primary{
+    background:linear-gradient(90deg, var(--sun1), var(--sun2));
+    color:var(--navy);
+    border:none; border-radius:10px;
+    padding:11px 20px; font-size:14px; font-weight:700;
+    cursor:pointer;
+    transition: transform .1s ease, box-shadow .15s ease;
+    box-shadow:0 8px 18px -8px rgba(255,138,61,0.55);
+  }
+  .btn-primary:hover{ box-shadow:0 10px 22px -8px rgba(255,138,61,0.7); }
+  .btn-primary:active{ transform:scale(0.98); }
+  .btn-back{
+    background:none; border:none; color:#7C8BA0; font-size:13px; font-weight:500;
+    cursor:pointer; padding:8px 4px;
+  }
+  .btn-back:hover{ color:var(--ink); }
+
+  .checklist{ display:flex; flex-direction:column; gap:11px; margin:2px 0 4px; }
+  .checklist .item{ display:flex; align-items:center; gap:10px; font-size:13.5px; color:#3d4c5e; }
+  .dot{
+    width:18px; height:18px; border-radius:50%; flex:none;
+    border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .dot.spin{ border-top-color:var(--sun1); border-right-color:var(--sun1); animation:spin 0.85s linear infinite; }
+  .dot.done{ background:var(--teal); border-color:var(--teal); }
+  .dot.done::after{ content:"✓"; color:var(--white); font-size:10px; font-weight:700; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .item.pending{ opacity:0.4; }
+
+  .success-icon{
+    width:46px; height:46px; border-radius:50%;
+    background:rgba(15,167,146,0.13); color:var(--teal);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; margin-bottom:12px;
+  }
+
+  .fine-consent{ font-size:11px; color:#8090A2; line-height:1.45; margin-top:10px; }
+  .fine-consent a{ color:#5b6b7d; text-decoration:underline; }
+
+  footer{
+    margin-top:14px;
+    font-size:10.5px; color:#A2AEBB; text-align:center; line-height:1.5; max-width:420px;
+    padding-bottom:10px;
+  }
+  footer a{ color:#8090A2; }
+
+  @media (prefers-reduced-motion: reduce){
+    .dot.spin{ animation:none; }
+    .segment .fill{ transition:none; }
+    .segment.active .fill{ animation:none; }
+    .opt-btn, .btn-primary{ transition:none; }
+  }
+  :focus-visible{ outline: 2px solid var(--sun1); outline-offset: 2px; }
+
+  @media (max-height:700px){
+    .quiz-body{ min-height:210px; }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <div class="brand">
+    <svg class="house-logo" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="sunGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#FF8A3D"/>
+          <stop offset="100%" stop-color="#FFC24B"/>
+        </linearGradient>
+        <linearGradient id="houseGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#173B5C"/>
+          <stop offset="100%" stop-color="#0E2136"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="16" r="8" fill="url(#sunGrad)"/>
+      <path d="M6 32 L32 12 L58 32" stroke="url(#houseGrad)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M13 28 V54 H51 V28" stroke="url(#houseGrad)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <g transform="translate(19,33) rotate(-16)">
+        <rect x="0" y="0" width="26" height="15" rx="2" fill="url(#sunGrad)"/>
+        <line x1="6.5" y1="0" x2="6.5" y2="15" stroke="#FDF9F1" stroke-width="1.4"/>
+        <line x1="13" y1="0" x2="13" y2="15" stroke="#FDF9F1" stroke-width="1.4"/>
+        <line x1="19.5" y1="0" x2="19.5" y2="15" stroke="#FDF9F1" stroke-width="1.4"/>
+        <line x1="0" y1="7.5" x2="26" y2="7.5" stroke="#FDF9F1" stroke-width="1.4"/>
+      </g>
+    </svg>
+    <div class="brand-name">FLORIDA<br><span class="accent">SOLAR SAVINGS</span></div>
+  </div>
+
+  <h1 class="headline">Obtenga una cotización solar gratis</h1>
+  <p class="subline">¡Tome esta encuesta de 60 segundos para ver si califica!</p>
+
+  <div class="quiz-card" id="quizCard">
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span class="progress-title" id="stepLabel">Paso 1 de 6</span>
+        <span class="progress-pct" id="pctLabel">17%</span>
+      </div>
+      <div class="segments" id="segments"></div>
+    </div>
+    <div class="quiz-body" id="quizBody"><!-- inyectado por JS --></div>
+  </div>
+
+  <footer>
+    Los ahorros son estimaciones y no están garantizados. Consulte con un profesional para confirmar su elegibilidad.
+    <br>
+    <a href="#">Privacidad</a> · <a href="#">Términos</a>
+  </footer>
+</main>
+
+<script>
+(function(){
+  const state = {
+    homeowner: null, zip: '', utility: '', bill: '', sun: '',
+    email: '', firstName: '', lastName: ''
+  };
+  const TOTAL_STEPS = 6;
+  const steps = ['homeowner','zip','bill','sun','checking','contact'];
+
+  const body = document.getElementById('quizBody');
+  const stepLabel = document.getElementById('stepLabel');
+  const pctLabel = document.getElementById('pctLabel');
+  const segmentsWrap = document.getElementById('segments');
+  let currentScreen = 'homeowner';
+
+  // build segments once
+  for(let i=0;i<TOTAL_STEPS;i++){
+    const seg = document.createElement('div');
+    seg.className = 'segment';
+    seg.innerHTML = '<div class="fill"></div>';
+    segmentsWrap.appendChild(seg);
+  }
+  const segEls = segmentsWrap.querySelectorAll('.segment');
+
+  function render(){
+    const idx = steps.indexOf(currentScreen);
+    const stepNum = idx >= 0 ? idx+1 : TOTAL_STEPS;
+    stepLabel.textContent = currentScreen === 'checking'
+      ? 'Verificando su área…'
+      : currentScreen === 'done'
+        ? 'Listo'
+        : `Paso ${stepNum} de ${TOTAL_STEPS}`;
+    const pct = Math.round((stepNum/TOTAL_STEPS)*100);
+    pctLabel.textContent = `${pct}%`;
+
+    segEls.forEach((seg, i)=>{
+      const fill = seg.querySelector('.fill');
+      seg.classList.remove('active');
+      if(i < stepNum - 1){
+        fill.style.width = '100%';
+      } else if(i === stepNum - 1){
+        fill.style.width = '100%';
+        seg.classList.add('active');
+      } else {
+        fill.style.width = '0%';
+      }
+    });
+  }
+
+  function screenHomeowner(){
+    currentScreen = 'homeowner';
+    body.innerHTML = `
+      <h2>¿Es propietario de una casa unifamiliar?</h2>
+      <p class="helper">No apartamento ni casa móvil.</p>
+      <div class="opt-grid">
+        <button class="opt-btn" data-val="yes">Sí, soy propietario <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="no">No <span class="arrow">→</span></button>
+      </div>
+    `;
+    body.querySelectorAll('.opt-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        state.homeowner = b.dataset.val;
+        if(state.homeowner === 'no'){ screenNotEligible(); } else { screenZip(); }
+      });
+    });
+    render();
+  }
+
+  function screenNotEligible(){
+    currentScreen = 'done';
+    body.innerHTML = `
+      <h2>Esta cotización es para propietarios</h2>
+      <p class="helper">Por ahora no podemos conectar a inquilinos o residentes de casas móviles con instaladores. ¡Gracias por su interés en la energía solar!</p>
+      <div class="nav-row">
+        <button class="btn-back" id="startOver">Empezar de nuevo</button>
+      </div>
+    `;
+    document.getElementById('startOver').addEventListener('click', screenHomeowner);
+    render();
+  }
+
+  function screenZip(){
+    currentScreen = 'zip';
+    body.innerHTML = `
+      <h2>¿Cuál es su código postal?</h2>
+      <p class="helper">Así identificamos qué instaladores certificados cubren su área.</p>
+      <div class="field" id="zipField">
+        <label for="zipInput">Código postal</label>
+        <input id="zipInput" inputmode="numeric" maxlength="5" placeholder="Ej. 32801" value="${state.zip}">
+        <span class="err">Ingrese un código postal válido de 5 dígitos.</span>
+      </div>
+      <div class="nav-row">
+        <button class="btn-back" id="back">Atrás</button>
+        <button class="btn-primary" id="next">Siguiente</button>
+      </div>
+    `;
+    document.getElementById('back').addEventListener('click', screenHomeowner);
+    document.getElementById('next').addEventListener('click', ()=>{
+      const val = document.getElementById('zipInput').value.trim();
+      const field = document.getElementById('zipField');
+      if(!/^\d{5}$/.test(val)){ field.classList.add('invalid'); return; }
+      field.classList.remove('invalid');
+      state.zip = val;
+      screenBillAndUtility();
+    });
+    render();
+  }
+
+  function screenBillAndUtility(){
+    currentScreen = 'bill';
+    body.innerHTML = `
+      <h2>Un poco sobre su factura eléctrica</h2>
+      <p class="helper">Un número aproximado está bien.</p>
+      <div class="field">
+        <label for="utilitySelect">Proveedor de electricidad</label>
+        <select id="utilitySelect">
+          <option value="">Seleccione su proveedor</option>
+          <option>FPL</option>
+          <option>Duke Energy Florida</option>
+          <option>TECO</option>
+          <option>Orlando Utilities Commission</option>
+          <option>JEA</option>
+          <option>Otro / no estoy seguro</option>
+        </select>
+      </div>
+      <div class="field" id="billField">
+        <label for="billInput">Promedio de factura mensual ($)</label>
+        <input id="billInput" inputmode="numeric" placeholder="Ej. 150" value="${state.bill}">
+        <span class="err">Ingrese un monto mensual aproximado.</span>
+      </div>
+      <div class="nav-row">
+        <button class="btn-back" id="back">Atrás</button>
+        <button class="btn-primary" id="next">Siguiente</button>
+      </div>
+    `;
+    if(state.utility){ document.getElementById('utilitySelect').value = state.utility; }
+    document.getElementById('back').addEventListener('click', screenZip);
+    document.getElementById('next').addEventListener('click', ()=>{
+      const bill = document.getElementById('billInput').value.trim();
+      const util = document.getElementById('utilitySelect').value;
+      const field = document.getElementById('billField');
+      if(!bill || isNaN(bill) || Number(bill) <= 0){ field.classList.add('invalid'); return; }
+      field.classList.remove('invalid');
+      state.bill = bill; state.utility = util;
+      screenSun();
+    });
+    render();
+  }
+
+  function screenSun(){
+    currentScreen = 'sun';
+    body.innerHTML = `
+      <h2>¿Qué tan soleado es su techo?</h2>
+      <p class="helper">Una estimación rápida es suficiente.</p>
+      <div class="opt-grid">
+        <button class="opt-btn" data-val="very">Muy soleado <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="partial">Parcialmente soleado <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="shady">Mucha sombra <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="unsure">No lo sé <span class="arrow">→</span></button>
+      </div>
+      <div class="nav-row">
+        <button class="btn-back" id="back">Atrás</button>
+        <span></span>
+      </div>
+    `;
+    document.getElementById('back').addEventListener('click', screenBillAndUtility);
+    body.querySelectorAll('.opt-btn').forEach(b=>{
+      b.addEventListener('click', ()=>{ state.sun = b.dataset.val; screenChecking(); });
+    });
+    render();
+  }
+
+  function screenChecking(){
+    currentScreen = 'checking';
+    body.innerHTML = `
+      <h2>Verificando cobertura solar en ${state.zip}</h2>
+      <p class="helper">Esto solo toma un momento.</p>
+      <div class="checklist">
+        <div class="item pending" data-i="0"><span class="dot"></span> Confirmando instaladores en su código postal</div>
+        <div class="item pending" data-i="1"><span class="dot"></span> Revisando la exposición solar de su área</div>
+        <div class="item pending" data-i="2"><span class="dot"></span> Calculando un rango estimado de ahorro</div>
+      </div>
+    `;
+    render();
+    const items = body.querySelectorAll('.checklist .item');
+    let i = 0;
+    function step(){
+      if(i > 0){
+        const prevDot = items[i-1].querySelector('.dot');
+        prevDot.classList.remove('spin'); prevDot.classList.add('done');
+        items[i-1].classList.remove('pending');
+      }
+      if(i < items.length){
+        items[i].classList.remove('pending');
+        items[i].querySelector('.dot').classList.add('spin');
+        i++; setTimeout(step, 650);
+      } else {
+        setTimeout(screenContact, 450);
+      }
+    }
+    setTimeout(step, 250);
+  }
+
+  function screenContact(){
+    currentScreen = 'contact';
+    body.innerHTML = `
+      <h2>¿A dónde enviamos su cotización?</h2>
+      <p class="helper">Le enviaremos su estimado por correo. Compartir su teléfono es opcional.</p>
+      <div class="row-2">
+        <div class="field" id="firstField">
+          <label for="firstInput">Nombre</label>
+          <input id="firstInput" placeholder="Nombre" value="${state.firstName}">
+          <span class="err">Ingrese su nombre.</span>
+        </div>
+        <div class="field" id="lastField">
+          <label for="lastInput">Apellido</label>
+          <input id="lastInput" placeholder="Apellido" value="${state.lastName}">
+          <span class="err">Ingrese su apellido.</span>
+        </div>
+      </div>
+      <div class="field" id="emailField">
+        <label for="emailInput">Correo electrónico</label>
+        <input id="emailInput" type="email" placeholder="usted@ejemplo.com" value="${state.email}">
+        <span class="err">Ingrese un correo electrónico válido.</span>
+      </div>
+      <div class="field">
+        <label for="phoneInput">Teléfono (opcional)</label>
+        <input id="phoneInput" type="tel" placeholder="Opcional — solo si desea que le llamen">
+      </div>
+      <div class="nav-row">
+        <button class="btn-back" id="back">Atrás</button>
+        <button class="btn-primary" id="next">Ver mi estimado</button>
+      </div>
+      <p class="fine-consent">Al continuar, acepta nuestros <a href="#">Términos</a> y <a href="#">Política de Privacidad</a>. Solo usaremos su teléfono para conectarlo con instaladores si usted lo proporcionó — sin llamadas ni mensajes automáticos de marketing.</p>
+    `;
+    document.getElementById('back').addEventListener('click', screenSun);
+    document.getElementById('next').addEventListener('click', ()=>{
+      const first = document.getElementById('firstInput').value.trim();
+      const last = document.getElementById('lastInput').value.trim();
+      const email = document.getElementById('emailInput').value.trim();
+      let ok = true;
+      const firstField = document.getElementById('firstField');
+      const lastField = document.getElementById('lastField');
+      const emailField = document.getElementById('emailField');
+      firstField.classList.toggle('invalid', !first); if(!first) ok = false;
+      lastField.classList.toggle('invalid', !last); if(!last) ok = false;
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      emailField.classList.toggle('invalid', !emailOk); if(!emailOk) ok = false;
+      if(!ok) return;
+      state.firstName = first; state.lastName = last; state.email = email;
+      screenSuccess();
+    });
+    render();
+  }
+
+  function screenSuccess(){
+    currentScreen = 'done';
+    body.innerHTML = `
+      <div class="success-icon">✓</div>
+      <h2>Todo listo, ${state.firstName}</h2>
+      <p class="helper">Con base en su código postal ${state.zip} y una factura de aprox. $${state.bill}/mes, le estamos conectando con instaladores certificados. Su estimado va en camino a ${state.email}.</p>
+      <div class="nav-row">
+        <button class="btn-back" id="restart">Empezar un nuevo estimado</button>
+      </div>
+    `;
+    document.getElementById('restart').addEventListener('click', ()=>{
+      Object.assign(state, {homeowner:null, zip:'', utility:'', bill:'', sun:'', email:'', firstName:'', lastName:''});
+      screenHomeowner();
+    });
+    render();
+  }
+
+  screenHomeowner();
+})();
+</script>
+
+</body>
+</html>
