@@ -769,13 +769,29 @@ window.GOOGLE_MAPS_API_KEY = ""; // <-- put your key here
       <p class="fine-consent">Al continuar, acepta nuestros <a href="#">Términos</a> y <a href="#">Política de Privacidad</a>. Usaremos su teléfono y correo únicamente para coordinar su cotización solar — sin llamadas ni mensajes automáticos de marketing.</p>
     `;
     document.getElementById('back').addEventListener('click', screenPhone);
-    document.getElementById('next').addEventListener('click', ()=>{
+    document.getElementById('next').addEventListener('click', async () => {
       const val = document.getElementById('emailInput').value.trim();
       const field = document.getElementById('emailField');
       const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
       if(!ok){ field.classList.add('invalid'); return; }
       field.classList.remove('invalid');
       state.email = val;
+      
+      try {
+        document.getElementById('next').innerText = "Cargando...";
+
+        await fetch('https://services.leadconnectorhq.com/hooks/CLfmsC7D1pozIl8gemPI/webhook-trigger/01e6938a-27b8-4897-8a5d-0af552a13de6', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify(state) 
+        });
+
+      } catch (error) {
+        console.error("Webhook Error:", error);
+      }
+
       screenSuccess();
     });
     render();
