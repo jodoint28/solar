@@ -14,7 +14,7 @@
     --sun1:#FF8A3D;
     --sun2:#FFC24B;
     --teal:#0FA792;
-    --sand:#FDF9F1;
+    --sand:#F1E9D8;
     --ink:#000000;
     --white:#FFFFFF;
     --line:rgba(14,33,54,0.14);
@@ -29,7 +29,7 @@
   body{
     font-family:'IBM Plex Sans', sans-serif;
     background:
-      radial-gradient(120% 90% at 50% -20%, #FFF3E1 0%, var(--sand) 55%);
+      radial-gradient(120% 90% at 50% -20%, #F7E7C9 0%, var(--sand) 55%);
     color:var(--ink);
     -webkit-font-smoothing:antialiased;
     min-height:100vh;
@@ -674,6 +674,8 @@ window.GOOGLE_MAPS_API_KEY = ""; // <-- put your key here
     `;
     render();
     const items = body.querySelectorAll('.checklist .item');
+    const delays = [650, 650, 3000]; // spin duration for each item; last item now takes 3s
+    const finalPause = 500; // pause after last checkmark before moving on
     let i = 0;
     function step(){
       if(i > 0){
@@ -684,9 +686,10 @@ window.GOOGLE_MAPS_API_KEY = ""; // <-- put your key here
       if(i < items.length){
         items[i].classList.remove('pending');
         items[i].querySelector('.dot').classList.add('spin');
-        i++; setTimeout(step, 650);
+        const d = delays[i];
+        i++; setTimeout(step, d);
       } else {
-        setTimeout(screenName, 500);
+        setTimeout(screenName, finalPause);
       }
     }
     setTimeout(step, 250);
@@ -724,7 +727,6 @@ window.GOOGLE_MAPS_API_KEY = ""; // <-- put your key here
     currentScreen = 'phone';
     body.innerHTML = `
       <h2>¿A qué número de teléfono podemos contactarte?</h2>
-      <p class="helper">Solo lo usaremos para coordinar su cotización.</p>
       <div class="field" id="phoneField">
         <label for="phoneInput">Teléfono</label>
         <input id="phoneInput" type="tel" placeholder="(305) 555-0123" value="${state.phone}">
