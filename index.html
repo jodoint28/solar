@@ -282,6 +282,51 @@
     .opt-btn, .btn-primary{ transition:none; }
   }
   :focus-visible{ outline: 2px solid var(--sun1); outline-offset: 2px; }
+
+    /* ---------- Added legal/footer section ---------- */
+    .legal-footer{
+      width:100%;
+      margin-top:40px;
+      padding:32px 24px 24px;
+      background:#fff;
+      border-top:1px solid #e5e7eb;
+      color:#4b5563;
+      font-size:12px;
+      line-height:1.65;
+      text-align:center;
+    }
+    .legal-footer .legal-links{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:10px 18px;
+      margin-bottom:14px;
+    }
+    .legal-footer a{
+      color:#374151;
+      text-decoration:underline;
+      cursor:pointer;
+    }
+    .legal-footer .legal-title{
+      font-weight:700;
+      color:#1f2937;
+      margin-bottom:8px;
+    }
+    .legal-footer .legal-copy{
+      max-width:900px;
+      margin:0 auto 12px;
+    }
+    .fine-consent{
+      font-size:11px;
+      line-height:1.55;
+      color:#6b7280;
+      margin:18px auto 0;
+      max-width:760px;
+    }
+    .fine-consent a{
+      color:#374151;
+      text-decoration:underline;
+    }
 </style>
 </head>
 <body>
@@ -320,7 +365,7 @@
    "Places API" enabled) below. Leave blank to fall back to
    plain manual address entry.
    ============================================================ */
-window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Replace with your Google Maps JavaScript API key
+window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with your Google Maps JavaScript API key
 
 (function(){
   const state = {
@@ -732,6 +777,11 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
         <input id="phoneInput" type="tel" placeholder="(305) 555-0123" value="${state.phone}">
         <span class="err">Ingrese un número de teléfono válido.</span>
       </div>
+      <p class="fine-consent">
+        Al proporcionar su número de teléfono y continuar, usted acepta recibir llamadas y mensajes de texto de Florida Solar Savings y de los profesionales de energía solar que puedan ayudarle con su solicitud, incluyendo llamadas y mensajes realizados mediante tecnología automatizada, autodialers o mensajes pregrabados, cuando corresponda. Su consentimiento no es una condición para comprar ningún producto o servicio. Pueden aplicarse tarifas de mensajes y datos. Puede retirar su consentimiento en cualquier momento. Para dejar de recibir mensajes de texto, responda STOP; para obtener ayuda, responda HELP.
+        <br><br>
+        Al continuar, también acepta nuestros <a href="terms-and-conditions.html">Términos y Condiciones</a> y nuestra <a href="privacy-policy.html">Política de Privacidad</a>.
+      </p>
       <div class="nav-row">
         <button class="btn-back" id="back">Atrás</button>
         <button class="btn-primary" id="next">Siguiente</button>
@@ -765,7 +815,7 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
         <button class="btn-back" id="back">Atrás</button>
         <button class="btn-primary" id="next">Ver mi estimado</button>
       </div>
-      <p class="fine-consent">Al continuar, acepta nuestros <a href="#">Términos</a> y <a href="#">Política de Privacidad</a>. Usaremos su teléfono y correo únicamente para coordinar su cotización solar — sin llamadas ni mensajes automáticos de marketing.</p>
+      <p class="fine-consent">Al continuar, confirma que la información proporcionada es correcta. Consulte nuestros <a href="terms-and-conditions.html">Términos y Condiciones</a> y nuestra <a href="privacy-policy.html">Política de Privacidad</a>.</p>
     `;
     document.getElementById('back').addEventListener('click', screenPhone);
     document.getElementById('next').addEventListener('click', async ()=>{
@@ -856,6 +906,26 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
   screenHomeowner();
 })();
 </script>
+
+
+<footer class="legal-footer" aria-label="Información legal">
+  <div class="legal-title">Florida Solar Savings</div>
+  <div class="legal-links">
+    <a href="privacy-policy.html">Política de Privacidad</a>
+    <a href="terms-and-conditions.html">Términos y Condiciones</a>
+    <a href="privacy-choices.html">Opciones de Privacidad</a>
+  </div>
+  <p class="legal-copy">
+    Florida Solar Savings ayuda a propietarios de viviendas a conectarse con profesionales de energía solar y otros proveedores de servicios relacionados. La disponibilidad de productos, servicios, incentivos, ahorros y ofertas puede variar según la ubicación, la vivienda, el proveedor y los requisitos de elegibilidad.
+  </p>
+  <p class="legal-copy">
+    Las estimaciones de ahorro son únicamente informativas y no constituyen una garantía de ahorro, rendimiento, aprobación, financiación, crédito fiscal o reducción específica de la factura eléctrica. Los resultados reales pueden variar. Consulte con profesionales calificados para obtener información sobre su vivienda y situación particular.
+  </p>
+  <p class="legal-copy">
+    Al enviar sus datos, usted puede ser contactado por teléfono, mensaje de texto o correo electrónico en relación con su solicitud. Las llamadas y mensajes pueden incluir tecnología automatizada cuando el consentimiento aplicable lo permita. Puede solicitar que no se le contacte nuevamente. Para ejercer una solicitud de no contacto, comuníquese utilizando la información disponible en nuestra Política de Privacidad.
+  </p>
+  <p>© 2026 Florida Solar Savings. Todos los derechos reservados.</p>
+</footer>
 
 </body>
 </html>
