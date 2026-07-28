@@ -328,12 +328,36 @@
       text-decoration:underline;
     }
 
-    /* Final typography adjustment: reduce font size only; preserve all existing content */
+    /* Final requested typography adjustments: size only, no content changes */
     .legal-footer{font-size:10px;}
-    .legal-footer .legal-copy{font-size:10px;}
     .legal-footer .legal-links{font-size:10px;}
+    .legal-footer .legal-copy{font-size:10px;}
     .legal-footer .legal-title{font-size:12px;}
+    .legal-footer > p:last-child{font-size:10px;}
     .fine-consent{font-size:9px !important;line-height:1.4;}
+
+    .badge-spacer{
+      min-height:420px;
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:60px 20px;
+      background:transparent;
+    }
+    .badge-row{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:28px;
+      flex-wrap:wrap;
+    }
+    .badge-row img{
+      width:auto;
+      max-width:105px;
+      max-height:65px;
+      object-fit:contain;
+    }
 </style>
 </head>
 <body>
@@ -372,7 +396,7 @@
    "Places API" enabled) below. Leave blank to fall back to
    plain manual address entry.
    ============================================================ */
-window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with your Google Maps JavaScript API key
+window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your Google Maps JavaScript API key
 
 (function(){
   const state = {
@@ -717,11 +741,11 @@ window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with yo
   function screenChecking(){
     currentScreen = 'checking';
     body.innerHTML = `
-      <h2>Verificando cobertura solar en ${state.zip}</h2>
+      <h2>Preparando su solicitud personalizada</h2>
       <div class="checklist">
-        <div class="item pending" data-i="0"><span class="dot"></span> Confirmando instaladores en su código postal</div>
-        <div class="item pending" data-i="1"><span class="dot"></span> Revisando la exposición solar de su área</div>
-        <div class="item pending" data-i="2"><span class="dot"></span> Calculando un rango estimado de ahorro</div>
+        <div class="item pending" data-i="0"><span class="dot"></span> Revisando la información de su vivienda</div>
+        <div class="item pending" data-i="1"><span class="dot"></span> Preparando su solicitud para opciones disponibles en su área</div>
+        <div class="item pending" data-i="2"><span class="dot"></span> Preparando información sobre posibles opciones de ahorro</div>
       </div>
     `;
     render();
@@ -785,7 +809,7 @@ window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with yo
         <span class="err">Ingrese un número de teléfono válido.</span>
       </div>
       <p class="fine-consent">
-        Al proporcionar su número de teléfono y continuar, usted acepta recibir llamadas y mensajes de texto de Florida Solar Savings y de los profesionales de energía solar que puedan ayudarle con su solicitud, incluyendo llamadas y mensajes realizados mediante tecnología automatizada, autodialers o mensajes pregrabados, cuando corresponda. Su consentimiento no es una condición para comprar ningún producto o servicio. Pueden aplicarse tarifas de mensajes y datos. Puede retirar su consentimiento en cualquier momento. Para dejar de recibir mensajes de texto, responda STOP; para obtener ayuda, responda HELP.
+        Al proporcionar su número de teléfono y continuar, usted acepta recibir llamadas y mensajes de texto de Florida Solar Savings y de otras empresas o profesionales locales de energía solar que puedan recibir su solicitud y comunicarse con usted sobre productos y servicios de energía solar. Las llamadas y mensajes pueden realizarse mediante tecnología automatizada, autodialers o mensajes pregrabados, cuando corresponda. Su consentimiento no es una condición para comprar ningún producto o servicio. Pueden aplicarse tarifas de mensajes y datos. Puede retirar su consentimiento en cualquier momento. Para dejar de recibir mensajes de texto, responda STOP; para obtener ayuda, responda HELP.
         <br><br>
         Al continuar, también acepta nuestros <a href="terms-and-conditions.html">Términos y Condiciones</a> y nuestra <a href="privacy-policy.html">Política de Privacidad</a>.
       </p>
@@ -872,7 +896,7 @@ window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with yo
       overlay.style.left = '0';
       overlay.style.width = '100vw';
       overlay.style.height = '100vh';
-      overlay.style.background = '#FFFFFF';
+      overlay.style.background = 'linear-gradient(135deg,#f7f0e4,#fffaf2)';
       overlay.style.display = 'flex';
       overlay.style.alignItems = 'center';
       overlay.style.justifyContent = 'center';
@@ -914,6 +938,15 @@ window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with yo
 })();
 </script>
 
+
+
+<div class="badge-spacer" aria-label="Información de confianza">
+  <div class="badge-row">
+    <img src="badge-equal-housing.png" alt="" loading="lazy">
+    <img src="badge-trustedform.png" alt="" loading="lazy">
+    <img src="badge.png" alt="" loading="lazy">
+  </div>
+</div>
 
 <footer class="legal-footer" aria-label="Información legal">
   <div class="legal-title">Florida Solar Savings</div>
