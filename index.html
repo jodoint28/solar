@@ -327,6 +327,13 @@
       color:#374151;
       text-decoration:underline;
     }
+
+    /* Final typography adjustment: reduce font size only; preserve all existing content */
+    .legal-footer{font-size:10px;}
+    .legal-footer .legal-copy{font-size:10px;}
+    .legal-footer .legal-links{font-size:10px;}
+    .legal-footer .legal-title{font-size:12px;}
+    .fine-consent{font-size:9px !important;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -365,7 +372,7 @@
    "Places API" enabled) below. Leave blank to fall back to
    plain manual address entry.
    ============================================================ */
-window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Replace with your Google Maps JavaScript API key
+window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with your Google Maps JavaScript API key
 
 (function(){
   const state = {
