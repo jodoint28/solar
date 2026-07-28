@@ -320,7 +320,7 @@
    "Places API" enabled) below. Leave blank to fall back to
    plain manual address entry.
    ============================================================ */
-window.GOOGLE_MAPS_API_KEY = ""; // <-- put your key here
+window.GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace with your Google Maps JavaScript API key
 
 (function(){
   const state = {
@@ -839,13 +839,18 @@ window.GOOGLE_MAPS_API_KEY = ""; // <-- put your key here
       email: state.email,
       submittedAt: new Date().toISOString()
     };
-    // TODO: replace with your real CRM/webhook endpoint, e.g.:
-    // fetch('https://your-crm-endpoint.example.com/leads', {
-    //   method: 'POST',
-    //   headers: {'Content-Type':'application/json'},
-    //   body: JSON.stringify(leadPayload)
-    // });
-    console.log('Lead ready to submit:', leadPayload);
+    // ---- Send lead to HighLevel Inbound Webhook ----
+    fetch('https://services.leadconnectorhq.com/hooks/CLfmsC7D1pozIl8gemPI/webhook-trigger/3725de27-fda9-4fa0-8a0e-bca4af510d45', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(leadPayload)
+    })
+    .then(response => {
+      if (!response.ok) throw new Error('HighLevel webhook returned HTTP ' + response.status);
+      return response.text();
+    })
+    .then(data => console.log('Lead successfully sent to HighLevel:', data))
+    .catch(error => console.error('Error sending lead to HighLevel:', error));
   }
 
   screenHomeowner();
