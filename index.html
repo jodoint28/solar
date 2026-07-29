@@ -734,15 +734,14 @@
     let debounceTimer;
     let sessionToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
 
-    /* ---- render dropdown ---- */
-    function showSuggestions(suggestions){
+    /* ---- render dropdown (old Places API format: {description, place_id}) ---- */
+    function showSuggestions(predictions){
       suggBox.innerHTML = '';
-      if(!suggestions || !suggestions.length){ suggBox.classList.remove('open'); return; }
+      if(!predictions || !predictions.length){ suggBox.classList.remove('open'); return; }
 
-      suggestions.forEach(s => {
-        const pred  = s.placePrediction;
-        const label = pred.text && pred.text.text ? pred.text.text : '';
-        const placeId = pred.placeId || '';
+      predictions.forEach(pred => {
+        const label   = pred.description || '';
+        const placeId = pred.place_id    || '';
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -758,22 +757,30 @@
           field.classList.remove('invalid');
           suggBox.classList.remove('open');
 
-          /* Fetch lat/lng from place details */
+          /* Fetch formatted address + lat/lng from Place Details */
           if(placeId){
             try {
-              const r = await fetch(
-                `https://places.googleapis.com/v1/places/${placeId}?fields=formattedAddress%2Clocation`,
-                { headers: { 'X-Goog-Api-Key': PLACES_KEY, 'X-Goog-FieldMask': 'formattedAddress,location' } }
-              );
+              const params = new URLSearchParams({
+                place_id: placeId,
+                fields: 'formatted_address,geometry',
+                sessiontoken: sessionToken,
+                key: PLACES_KEY
+              });
+              const r = await fetch('https://maps.googleapis.com/maps/api/place/details/json?' + params);
               if(r.ok){
                 const d = await r.json();
-                if(d.formattedAddress){ state.address = d.formattedAddress; input.value = d.formattedAddress; }
-                if(d.location){ state.addressLat = d.location.latitude; state.addressLng = d.location.longitude; }
+                if(d.status === 'OK' && d.result){
+                  if(d.result.formatted_address){ state.address = d.result.formatted_address; input.value = d.result.formatted_address; }
+                  if(d.result.geometry && d.result.geometry.location){
+                    state.addressLat = d.result.geometry.location.lat;
+                    state.addressLng = d.result.geometry.location.lng;
+                  }
+                }
               }
             } catch(_){}
           }
 
-          /* Rotate session token after selection */
+          /* Rotate session token after a completed session */
           sessionToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
         });
         suggBox.appendChild(btn);
@@ -786,24 +793,26 @@
       suggBox.classList.add('open');
     }
 
-    /* ---- fetch autocomplete via Places REST API ---- */
+    /* ---- fetch autocomplete via Places API ---- */
     async function fetchSuggestions(query){
       if(query.length < 2){ suggBox.classList.remove('open'); return; }
       try {
-        const r = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': PLACES_KEY },
-          body: JSON.stringify({
-            input: query,
-            sessionToken,
-            includedRegionCodes: ['us'],
-            includedPrimaryTypes: ['street_address','route','premise','subpremise','neighborhood','locality','postal_code']
-          })
+        const params = new URLSearchParams({
+          input: query,
+          components: 'country:us',
+          types: 'address',
+          sessiontoken: sessionToken,
+          key: PLACES_KEY
         });
+        const r = await fetch('https://maps.googleapis.com/maps/api/place/autocomplete/json?' + params);
         if(!r.ok){ suggBox.classList.remove('open'); return; }
         const data = await r.json();
         if(currentScreen !== 'address') return;
-        showSuggestions(data.suggestions || []);
+        if(data.status === 'OK'){
+          showSuggestions(data.predictions || []);
+        } else {
+          suggBox.classList.remove('open');
+        }
       } catch(_){
         if(currentScreen === 'address') suggBox.classList.remove('open');
       }
