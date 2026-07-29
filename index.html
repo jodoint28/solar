@@ -392,38 +392,6 @@
     .badge-row{ gap:7px; }
     .badge-row img{ max-height:48px; }
   }
-
-  /* ---------- Official Google address widget ---------- */
-  #placeAutocompleteMount{
-    width:100%;
-    position:relative;
-    z-index:10000;
-  }
-  #placeAutocompleteMount gmp-place-autocomplete{
-    width:100%;
-    display:block;
-    color-scheme:light;
-    background-color:var(--white);
-    border:1.5px solid var(--line);
-    border-radius:10px;
-    color:var(--ink);
-    font:15.5px 'IBM Plex Sans', sans-serif;
-    line-height:1.4;
-  }
-  #placeAutocompleteMount gmp-place-autocomplete:focus-within{
-    border-color:var(--sun1);
-  }
-  #placeAutocompleteMount gmp-place-autocomplete::part(input){
-    min-height:46px;
-    padding:11px 12px;
-    color:var(--ink);
-    background:var(--white);
-  }
-  #placeAutocompleteMount gmp-place-autocomplete::part(prediction-list){
-    z-index:10000;
-  }
-  #addrManualInput[hidden]{ display:none !important; }
-
 </style>
 
 </head>
@@ -464,17 +432,7 @@
   </footer>
 </main>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ&amp;libraries=places&amp;v=weekly"></script>
-
 <script>
-/* ============================================================
-   GOOGLE PLACES CONFIG
-   Paste your own Google Maps JavaScript API key (with the
-   "Places API" enabled) below. Leave blank to fall back to
-   plain manual address entry.
-   ============================================================ */
-window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Replace with your Google Maps JavaScript API key
-
 (function(){
   const state = {
     homeowner: null, zip: '', utility: '', bill: 250, sun: '',
@@ -497,6 +455,15 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
     segmentsWrap.appendChild(seg);
   }
   const segEls = segmentsWrap.querySelectorAll('.segment');
+
+  function escapeHtml(value){
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
 
   function render(){
     const quizCardEl = document.getElementById('quizCard');
@@ -731,206 +698,67 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
     render();
   }
 
-  /* ---------- Step 6: Address w/ Google Places ---------- */
-  async function loadGooglePlaces(){
-    if(!(window.google && google.maps && typeof google.maps.importLibrary === 'function')){
-      throw new Error('Google Maps JavaScript API did not load.');
-    }
-
-    const placesLibrary = await google.maps.importLibrary('places');
-    if(!placesLibrary || !placesLibrary.PlaceAutocompleteElement){
-      throw new Error('Google PlaceAutocompleteElement is unavailable.');
-    }
-    return placesLibrary;
-  }
-
+  /* ---------- Step 6: Address ---------- */
   function screenAddress(){
     currentScreen = 'address';
     body.innerHTML = `
       <h2>¿Dónde desea instalar los paneles solares?</h2>
-      <p class="helper">Empiece a escribir y seleccione su dirección.</p>
-      <div class="field addr-wrap" id="addrField">
-        <label>Dirección</label>
-        <div id="placeAutocompleteMount"></div>
-        <input id="addrManualInput" placeholder="Dirección completa" autocomplete="street-address" value="${state.address}" hidden>
-        <span class="err">Ingrese una dirección válida.</span>
-        <div class="addr-status" id="addrStatus">Cargando buscador de direcciones…</div>
+      <p class="helper">Ingrese la dirección completa de la propiedad.</p>
+      <div class="field" id="addrField">
+        <label for="addrInput">Dirección</label>
+        <input
+          id="addrInput"
+          type="text"
+          placeholder="Ejemplo: 123 Main St, Orlando, FL 32801"
+          autocomplete="street-address"
+          autocapitalize="words"
+          spellcheck="false"
+          value="${escapeHtml(state.address)}">
+        <span class="err">Ingrese la dirección completa.</span>
+        <div class="addr-status">Puede escribirla manualmente y continuar.</div>
       </div>
       <div class="nav-row">
-        <button class="btn-back" id="back">Atrás</button>
-        <button class="btn-primary" id="next">Siguiente</button>
+        <button class="btn-back" id="back" type="button">Atrás</button>
+        <button class="btn-primary" id="next" type="button">Siguiente</button>
       </div>
     `;
 
-    const mount = document.getElementById('placeAutocompleteMount');
-    const manualInput = document.getElementById('addrManualInput');
-    const statusEl = document.getElementById('addrStatus');
+    const input = document.getElementById('addrInput');
     const field = document.getElementById('addrField');
-    const nextButton = document.getElementById('next');
 
-    let widget = null;
-    let manualMode = false;
-    let addressConfirmed = Boolean(
-      state.address &&
-      state.addressLat !== null &&
-      state.addressLng !== null
-    );
-
-    function setLocation(location){
-      if(!location){
-        state.addressLat = null;
-        state.addressLng = null;
-        return;
-      }
-
-      state.addressLat = typeof location.lat === 'function'
-        ? location.lat()
-        : (typeof location.lat === 'number' ? location.lat : null);
-
-      state.addressLng = typeof location.lng === 'function'
-        ? location.lng()
-        : (typeof location.lng === 'number' ? location.lng : null);
-    }
-
-    function currentAddress(){
-      if(manualMode) return manualInput.value.trim();
-      if(widget && typeof widget.value === 'string') return widget.value.trim();
-      return state.address.trim();
-    }
-
-    function enableManualMode(message){
-      manualMode = true;
-      mount.replaceChildren();
-      mount.style.display = 'none';
-      manualInput.hidden = false;
-      manualInput.value = state.address || '';
-      statusEl.textContent = message || 'Escriba su dirección completa.';
-      addressConfirmed = false;
+    input.addEventListener('input', ()=>{
+      state.address = input.value;
       state.addressLat = null;
       state.addressLng = null;
-      setTimeout(()=>manualInput.focus(), 0);
-    }
-
-    if(addressConfirmed){
-      statusEl.innerHTML = '<span class="addr-check">✓ Dirección seleccionada</span>';
-    }
-
-    loadGooglePlaces()
-      .then(({ PlaceAutocompleteElement })=>{
-        widget = new PlaceAutocompleteElement({
-          includedRegionCodes: ['us'],
-          requestedLanguage: 'es',
-          requestedRegion: 'us',
-          placeholder: 'Empiece a escribir su dirección…'
-        });
-
-        widget.id = 'addrAutocomplete';
-        widget.value = state.address || '';
-        widget.setAttribute('aria-label', 'Dirección de instalación');
-        mount.replaceChildren(widget);
-
-        if(!addressConfirmed){
-          statusEl.textContent = 'Seleccione una dirección de la lista.';
-        }
-
-        const markTyping = ()=>{
-          addressConfirmed = false;
-          state.address = typeof widget.value === 'string' ? widget.value : '';
-          state.addressLat = null;
-          state.addressLng = null;
-          field.classList.remove('invalid');
-          statusEl.textContent = 'Seleccione una dirección de la lista.';
-        };
-
-        widget.addEventListener('input', markTyping);
-        widget.addEventListener('change', markTyping);
-
-        widget.addEventListener('gmp-error', ()=>{
-          enableManualMode('No se pudo cargar Google. Escriba su dirección completa.');
-        });
-
-        widget.addEventListener('gmp-select', async (event)=>{
-          try{
-            statusEl.textContent = 'Confirmando dirección…';
-
-            const prediction =
-              event.placePrediction ||
-              (event.detail && event.detail.placePrediction) ||
-              null;
-
-            let place =
-              event.place ||
-              (event.detail && event.detail.place) ||
-              null;
-
-            if(!place && prediction && typeof prediction.toPlace === 'function'){
-              place = prediction.toPlace();
-            }
-
-            if(!place){
-              throw new Error('Google did not provide the selected place.');
-            }
-
-            if(typeof place.fetchFields === 'function'){
-              await place.fetchFields({
-                fields: ['formattedAddress', 'location']
-              });
-            }
-
-            const formattedAddress =
-              place.formattedAddress ||
-              (typeof widget.value === 'string' ? widget.value : '') ||
-              state.address;
-
-            if(!formattedAddress){
-              throw new Error('Google did not return an address.');
-            }
-
-            widget.value = formattedAddress;
-            state.address = formattedAddress;
-            setLocation(place.location);
-            addressConfirmed = true;
-            field.classList.remove('invalid');
-            statusEl.innerHTML = '<span class="addr-check">✓ Dirección seleccionada</span>';
-          } catch(error){
-            console.error('Google address selection error:', error);
-            const typed = currentAddress();
-            state.address = typed;
-            addressConfirmed = false;
-            statusEl.textContent = 'Puede continuar con la dirección escrita.';
-          }
-        });
-      })
-      .catch((error)=>{
-        console.error('Google address loader error:', error);
-        enableManualMode('Escriba su dirección completa.');
-      });
-
-    manualInput.addEventListener('input', ()=>{
-      state.address = manualInput.value;
-      state.addressLat = null;
-      state.addressLng = null;
-      addressConfirmed = false;
       field.classList.remove('invalid');
     });
 
+    input.addEventListener('keydown', (event)=>{
+      if(event.key === 'Enter'){
+        event.preventDefault();
+        document.getElementById('next').click();
+      }
+    });
+
     document.getElementById('back').addEventListener('click', screenSun);
+    document.getElementById('next').addEventListener('click', ()=>{
+      const value = input.value.trim();
 
-    nextButton.addEventListener('click', ()=>{
-      const value = currentAddress();
-      const manualAddressIsUsable = value.length >= 8 && /\d/.test(value);
-
-      if(!value || (!addressConfirmed && !manualAddressIsUsable)){
+      if(value.length < 5){
         field.classList.add('invalid');
+        input.focus();
         return;
       }
 
       field.classList.remove('invalid');
       state.address = value;
+      state.addressLat = null;
+      state.addressLng = null;
       screenChecking();
     });
 
     render();
+    setTimeout(()=>input.focus(), 0);
   }
 
   /* ---------- Step 7: Checking ---------- */
