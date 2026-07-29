@@ -396,10 +396,18 @@
 
 <script>
   window._googlePlacesReady = false;
+  window._googlePlacesFailed = false;
   function initGooglePlaces() { window._googlePlacesReady = true; }
+  /* Called by Maps JS API when the key is domain-restricted or invalid */
+  window.gm_authFailure = function() {
+    window._googlePlacesFailed = true;
+    window._googlePlacesReady  = false;
+    const el = document.getElementById('addrStatus');
+    if(el) el.textContent = 'Puede escribirla manualmente y continuar.';
+  };
 </script>
 <script async defer
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ&libraries=places&callback=initGooglePlaces&loading=async">
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ&libraries=places&callback=initGooglePlaces&loading=async&v=weekly">
 </script>
 </head>
 <body>
@@ -738,17 +746,12 @@
     const suggBox    = document.getElementById('addrSuggestions');
     const statusEl   = document.getElementById('addrStatus');
 
-    let acService    = null;
-    let psService    = null;
     let sessionToken = null;
     let debounceTimer;
 
     /* ---- initialise Places services once the API is ready ---- */
     function initServices(){
       try {
-        acService    = new google.maps.places.AutocompleteService();
-        const dummy  = document.createElement('div');
-        psService    = new google.maps.places.PlacesService(dummy);
         sessionToken = new google.maps.places.AutocompleteSessionToken();
         statusEl.innerHTML = '<span class="addr-check">✓ Autocompletado activo</span>';
       } catch(e){
@@ -757,45 +760,46 @@
     }
 
     /* ---- render dropdown suggestions ---- */
-    function showSuggestions(predictions){
+    function showSuggestions(items){
       suggBox.innerHTML = '';
-      if(!predictions || !predictions.length){
+      if(!items || !items.length){
         suggBox.classList.remove('open');
         return;
       }
-      predictions.forEach(pred => {
+      items.forEach(item => {
+        /* New Places API: item.placePrediction */
+        const pred  = item.placePrediction;
+        const label = pred.text ? pred.text.toString() : '';
         const btn = document.createElement('button');
         btn.type      = 'button';
         btn.className = 'addr-suggestion';
         btn.setAttribute('role', 'option');
-        btn.textContent = pred.description;
-        /* mousedown fires before blur, so we use preventDefault to keep focus */
+        btn.textContent = label;
         btn.addEventListener('mousedown', e => e.preventDefault());
-        btn.addEventListener('click', () => {
-          input.value      = pred.description;
-          state.address    = pred.description;
+        btn.addEventListener('click', async () => {
+          input.value      = label;
+          state.address    = label;
           state.addressLat = null;
           state.addressLng = null;
           field.classList.remove('invalid');
           suggBox.classList.remove('open');
 
-          /* Fetch place details for lat/lng */
-          if(psService && pred.place_id){
-            psService.getDetails({
-              placeId: pred.place_id,
-              fields:  ['geometry','formatted_address'],
-              sessionToken
-            }, (place, status) => {
-              if(status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry){
-                state.address    = place.formatted_address || pred.description;
-                state.addressLat = place.geometry.location.lat();
-                state.addressLng = place.geometry.location.lng();
-                input.value      = state.address;
-              }
-              /* Refresh token after a session completes */
-              sessionToken = new google.maps.places.AutocompleteSessionToken();
-            });
-          }
+          /* Fetch formatted address + coordinates */
+          try {
+            const place = pred.toPlace();
+            await place.fetchFields({ fields: ['formattedAddress', 'location'] });
+            if(place.formattedAddress){
+              state.address = place.formattedAddress;
+              input.value   = place.formattedAddress;
+            }
+            if(place.location){
+              state.addressLat = place.location.lat();
+              state.addressLng = place.location.lng();
+            }
+          } catch(_){}
+
+          /* Refresh session token */
+          try { sessionToken = new google.maps.places.AutocompleteSessionToken(); } catch(_){}
         });
         suggBox.appendChild(btn);
       });
@@ -806,22 +810,26 @@
       suggBox.classList.add('open');
     }
 
-    /* ---- query autocomplete ---- */
-    function fetchSuggestions(query){
-      if(!acService || query.length < 3){ suggBox.classList.remove('open'); return; }
-      acService.getPlacePredictions({
-        input: query,
-        componentRestrictions: { country: 'us' },
-        types: ['address'],
-        sessionToken
-      }, (predictions, status) => {
-        if(currentScreen !== 'address') return; /* guard: user navigated away */
-        if(status === google.maps.places.PlacesServiceStatus.OK){
-          showSuggestions(predictions);
-        } else {
-          suggBox.classList.remove('open');
-        }
-      });
+    /* ---- query autocomplete (new Places API, promise-based) ---- */
+    async function fetchSuggestions(query){
+      if(window._googlePlacesFailed || query.length < 3){
+        suggBox.classList.remove('open'); return;
+      }
+      if(!window._googlePlacesReady || !window.google?.maps?.places?.AutocompleteSuggestion){
+        suggBox.classList.remove('open'); return;
+      }
+      try {
+        const { suggestions } = await google.maps.places.AutocompleteSuggestion
+          .fetchAutocompleteSuggestions({
+            input: query,
+            includedRegionCodes: ['us'],
+            sessionToken
+          });
+        if(currentScreen !== 'address') return;
+        showSuggestions(suggestions);
+      } catch(e){
+        if(currentScreen === 'address') suggBox.classList.remove('open');
+      }
     }
 
     /* ---- input events ---- */
@@ -873,23 +881,33 @@
     render();
 
     /* ---- wait for Google Maps API to be ready ---- */
-    if(window._googlePlacesReady && window.google && window.google.maps && window.google.maps.places){
-      initServices();
-    } else {
+    function _tryInit(){
+      if(window._googlePlacesFailed){
+        statusEl.textContent = 'Puede escribirla manualmente y continuar.';
+        return;
+      }
+      if(window.google?.maps?.places?.AutocompleteSuggestion){
+        window._googlePlacesReady = true;
+        if(currentScreen === 'address') initServices();
+        return;
+      }
       let attempts = 0;
       const poll = setInterval(() => {
         attempts++;
-        if(window.google && window.google.maps && window.google.maps.places){
+        if(window._googlePlacesFailed){
+          clearInterval(poll);
+          if(currentScreen === 'address') statusEl.textContent = 'Puede escribirla manualmente y continuar.';
+        } else if(window.google?.maps?.places?.AutocompleteSuggestion){
           clearInterval(poll);
           window._googlePlacesReady = true;
           if(currentScreen === 'address') initServices();
-        } else if(attempts >= 30){ /* 30 × 200 ms = 6 s timeout */
+        } else if(attempts >= 35){ /* 35 × 200 ms = 7 s */
           clearInterval(poll);
-          if(currentScreen === 'address')
-            statusEl.textContent = 'Puede escribirla manualmente y continuar.';
+          if(currentScreen === 'address') statusEl.textContent = 'Puede escribirla manualmente y continuar.';
         }
       }, 200);
     }
+    _tryInit();
 
     setTimeout(() => input.focus(), 0);
   }
