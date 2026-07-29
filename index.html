@@ -262,32 +262,45 @@
 
   /* ---------- Address autocomplete ---------- */
   .addr-wrap{ position:relative; }
+  .addr-status{ font-size:12px; color:#333; margin-top:6px; }
+  .addr-check{ color:var(--teal); font-weight:600; }
+  #placeAutocompleteContainer{ display:none; }
   .addr-suggestions{
-    position:absolute; left:0; right:0; top:calc(100% + 4px);
-    background:var(--white); border:1.5px solid var(--line); border-radius:10px;
+    position:absolute;
+    left:0;
+    right:0;
+    top:calc(100% + 4px);
+    background:var(--white);
+    border:1.5px solid var(--line);
+    border-radius:10px;
     box-shadow:0 12px 26px -12px rgba(14,33,54,0.35);
-    max-height:200px; overflow-y:auto; z-index:5; display:none;
+    max-height:240px;
+    overflow-y:auto;
+    z-index:10000;
+    display:none;
   }
   .addr-suggestions.open{ display:block; }
   .addr-suggestion{
-    padding:11px 13px; font-size:14.5px; cursor:pointer; color:var(--ink);
-    border-bottom:1px solid var(--line);
-  }
-  .addr-suggestion:last-child{ border-bottom:none; }
-  .addr-suggestion:hover{ background:#FFF7EE; }
-  .addr-status{ font-size:12px; color:#333; margin-top:6px; }
-  .addr-check{ color:var(--teal); font-weight:600; }
-  #placeAutocompleteContainer{ width:100%; margin-bottom:8px; }
-  gmp-place-autocomplete{
-    display:block;
     width:100%;
-    min-height:46px;
+    border:0;
+    border-bottom:1px solid var(--line);
     background:var(--white);
+    padding:11px 13px;
+    text-align:left;
+    font:inherit;
+    font-size:14px;
     color:var(--ink);
-    border:1.5px solid var(--line);
-    border-radius:10px;
-    font-family:inherit;
-    font-size:15.5px;
+    cursor:pointer;
+  }
+  .addr-suggestion:last-of-type{ border-bottom:none; }
+  .addr-suggestion:hover,
+  .addr-suggestion:focus{ background:#FFF7EE; }
+  .google-attribution{
+    padding:7px 13px;
+    text-align:right;
+    font-size:10px;
+    color:#666;
+    background:var(--white);
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -688,51 +701,37 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
   let placesLoadFailed = false;
   let autocompleteInstance = null;
 
-  async function loadGooglePlaces(cb){
+  async function loadGooglePlaces(){
     if(!window.GOOGLE_MAPS_API_KEY){
-      placesLoadFailed = true;
-      cb(false, null);
-      return;
+      throw new Error('Google Maps API key is missing.');
     }
 
-    try{
-      if(!(window.google && window.google.maps)){
-        await new Promise((resolve, reject)=>{
-          const existing = document.getElementById('googleMapsScript');
+    if(!(window.google && window.google.maps)){
+      await new Promise((resolve, reject)=>{
+        const existing = document.getElementById('googleMapsScript');
 
-          if(existing){
-            if(window.google && window.google.maps){
-              resolve();
-              return;
-            }
-            existing.addEventListener('load', resolve, { once:true });
-            existing.addEventListener('error', reject, { once:true });
+        if(existing){
+          if(window.google && window.google.maps){
+            resolve();
             return;
           }
+          existing.addEventListener('load', resolve, { once:true });
+          existing.addEventListener('error', reject, { once:true });
+          return;
+        }
 
-          const script = document.createElement('script');
-          script.id = 'googleMapsScript';
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${window.GOOGLE_MAPS_API_KEY}&loading=async&v=weekly`;
-          script.async = true;
-          script.defer = true;
-          script.onload = resolve;
-          script.onerror = ()=>reject(new Error('Google Maps JavaScript API failed to load'));
-          document.head.appendChild(script);
-        });
-      }
-
-      const placesLibrary = await google.maps.importLibrary('places');
-      if(!placesLibrary || !placesLibrary.PlaceAutocompleteElement){
-        throw new Error('PlaceAutocompleteElement is unavailable. Verify Places API (New) is enabled.');
-      }
-
-      placesLoaded = true;
-      cb(true, placesLibrary);
-    } catch(error){
-      console.error('Google Places loading error:', error);
-      placesLoadFailed = true;
-      cb(false, null);
+        const script = document.createElement('script');
+        script.id = 'googleMapsScript';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${window.GOOGLE_MAPS_API_KEY}&loading=async&v=weekly`;
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = ()=>reject(new Error('Google Maps JavaScript API failed to load.'));
+        document.head.appendChild(script);
+      });
     }
+
+    return await google.maps.importLibrary('places');
   }
 
   function screenAddress(){
@@ -742,9 +741,8 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
       <p class="helper">Ingrese la dirección de la calle.</p>
       <div class="field addr-wrap" id="addrField">
         <label for="addrInput">Dirección</label>
-        <div id="placeAutocompleteContainer"></div>
-        <input id="addrInput" placeholder="Empiece a escribir su dirección..." autocomplete="street-address" value="${state.address}">
-        <div class="addr-suggestions" id="addrSuggestions"></div>
+        <input id="addrInput" placeholder="Empiece a escribir su dirección..." autocomplete="off" value="${state.address}">
+        <div class="addr-suggestions" id="addrSuggestions" role="listbox" aria-label="Sugerencias de direcciones"></div>
         <span class="err">Seleccione una dirección válida de la lista, o escríbala completa.</span>
         <div class="addr-status" id="addrStatus"></div>
       </div>
@@ -753,53 +751,57 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
         <button class="btn-primary" id="next">Siguiente</button>
       </div>
     `;
+
     const input = document.getElementById('addrInput');
     const statusEl = document.getElementById('addrStatus');
     const suggestBox = document.getElementById('addrSuggestions');
     const field = document.getElementById('addrField');
 
     let addressConfirmed = !!state.address;
-    if(addressConfirmed){ statusEl.innerHTML = '<span class="addr-check">✓ Dirección seleccionada</span>'; }
+    let placesLibrary = null;
+    let sessionToken = null;
+    let debounceTimer = null;
+    let newestRequestId = 0;
 
-    const autocompleteContainer = document.getElementById('placeAutocompleteContainer');
-    autocompleteContainer.innerHTML = '';
-    input.style.display = '';
-    statusEl.textContent = 'Cargando buscador de direcciones…';
+    if(addressConfirmed){
+      statusEl.innerHTML = '<span class="addr-check">✓ Dirección seleccionada</span>';
+    } else {
+      statusEl.textContent = 'Cargando buscador de direcciones…';
+    }
 
-    loadGooglePlaces((ok, placesLibrary)=>{
-      if(!ok || !placesLibrary){
+    loadGooglePlaces()
+      .then((library)=>{
+        placesLibrary = library;
+        sessionToken = new placesLibrary.AutocompleteSessionToken();
+        statusEl.textContent = 'Empiece a escribir y seleccione una dirección.';
+      })
+      .catch((error)=>{
+        console.error('Google Places loading error:', error);
         statusEl.textContent = 'Escriba su dirección completa.';
-        input.style.display = '';
-        return;
-      }
+      });
 
-      try{
-        const { PlaceAutocompleteElement } = placesLibrary;
-        const placeAutocomplete = new PlaceAutocompleteElement({
-          includedRegionCodes: ['us'],
-          placeholder: 'Empiece a escribir su dirección…',
-          requestedLanguage: 'es',
-          requestedRegion: 'us'
-        });
+    function closeSuggestions(){
+      suggestBox.classList.remove('open');
+      suggestBox.replaceChildren();
+    }
 
-        autocompleteContainer.appendChild(placeAutocomplete);
-        autocompleteInstance = placeAutocomplete;
-        input.style.display = 'none';
-        statusEl.textContent = 'Empiece a escribir y seleccione una dirección de Google.';
+    function renderSuggestions(suggestions){
+      suggestBox.replaceChildren();
 
-        placeAutocomplete.addEventListener('gmp-error', ()=>{
-          console.error('Google Places denied the autocomplete request.');
-          autocompleteContainer.innerHTML = '';
-          input.style.display = '';
-          statusEl.textContent = 'Escriba su dirección completa.';
-        });
+      for(const suggestion of suggestions){
+        const prediction = suggestion.placePrediction;
+        if(!prediction) continue;
 
-        placeAutocomplete.addEventListener('gmp-select', async (event)=>{
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'addr-suggestion';
+        button.setAttribute('role', 'option');
+        button.textContent = prediction.text.toString();
+
+        button.addEventListener('click', async ()=>{
           try{
-            const prediction = event.placePrediction;
-            if(!prediction){
-              throw new Error('Google did not return a place prediction.');
-            }
+            closeSuggestions();
+            statusEl.textContent = 'Confirmando dirección…';
 
             const place = prediction.toPlace();
             await place.fetchFields({
@@ -810,47 +812,103 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
               throw new Error('Google did not return a formatted address.');
             }
 
+            input.value = place.formattedAddress;
             state.address = place.formattedAddress;
             state.addressLat = place.location ? place.location.lat() : null;
             state.addressLng = place.location ? place.location.lng() : null;
-            input.value = place.formattedAddress;
             addressConfirmed = true;
-            statusEl.innerHTML = '<span class="addr-check">✓ Dirección seleccionada</span>';
             field.classList.remove('invalid');
+            statusEl.innerHTML = '<span class="addr-check">✓ Dirección seleccionada</span>';
+
+            sessionToken = new placesLibrary.AutocompleteSessionToken();
           } catch(error){
             console.error('Google place selection error:', error);
             addressConfirmed = false;
             statusEl.textContent = 'No se pudo confirmar esa dirección. Puede escribirla manualmente.';
-            input.style.display = '';
           }
         });
+
+        suggestBox.appendChild(button);
+      }
+
+      if(suggestBox.children.length){
+        const attribution = document.createElement('div');
+        attribution.className = 'google-attribution';
+        attribution.textContent = 'Powered by Google';
+        suggestBox.appendChild(attribution);
+        suggestBox.classList.add('open');
+      } else {
+        closeSuggestions();
+      }
+    }
+
+    async function requestSuggestions(){
+      const query = input.value.trim();
+      const requestId = ++newestRequestId;
+
+      if(query.length < 3 || !placesLibrary){
+        closeSuggestions();
+        return;
+      }
+
+      try{
+        const request = {
+          input: query,
+          includedRegionCodes: ['us'],
+          language: 'es',
+          region: 'us',
+          sessionToken
+        };
+
+        const { suggestions } =
+          await placesLibrary.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+
+        if(requestId !== newestRequestId) return;
+        renderSuggestions(suggestions || []);
       } catch(error){
-        console.error('Google autocomplete initialization error:', error);
-        autocompleteContainer.innerHTML = '';
-        input.style.display = '';
+        console.error('Google autocomplete request error:', error);
+        closeSuggestions();
         statusEl.textContent = 'Escriba su dirección completa.';
       }
-    });
+    }
 
     input.addEventListener('input', ()=>{
       addressConfirmed = false;
       state.address = input.value;
-      statusEl.textContent = '';
+      state.addressLat = null;
+      state.addressLng = null;
+      field.classList.remove('invalid');
+      statusEl.textContent = placesLibrary
+        ? 'Seleccione una dirección de la lista.'
+        : 'Escriba su dirección completa.';
+
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(requestSuggestions, 250);
     });
+
+    input.addEventListener('keydown', (event)=>{
+      if(event.key === 'Escape') closeSuggestions();
+    });
+
+    document.addEventListener('click', (event)=>{
+      if(!field.contains(event.target)) closeSuggestions();
+    }, { once:true });
 
     document.getElementById('back').addEventListener('click', screenSun);
     document.getElementById('next').addEventListener('click', ()=>{
       const val = input.value.trim();
-      // Accept either a Google-confirmed selection, or a reasonably complete manual entry as fallback
       const manualOk = val.length >= 8 && /\d/.test(val);
+
       if(!val || (!addressConfirmed && !manualOk)){
         field.classList.add('invalid');
         return;
       }
+
       field.classList.remove('invalid');
       state.address = val;
       screenChecking();
     });
+
     render();
   }
 
