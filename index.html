@@ -8,6 +8,30 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  Google Places Autocomplete (used on the address step of the quiz).
+  Replace GOOGLE_MAPS_API_KEY below with a real Maps JavaScript API key from
+  https://console.cloud.google.com/google/maps-apis/credentials
+  That project must have:
+    1) "Maps JavaScript API" enabled
+    2) "Places API" enabled
+    3) Billing enabled (Google requires a billing account even for free-tier usage)
+    4) If the key is restricted by HTTP referrer, this site's domain must be on the allow list
+  Without a valid key the address field still works as a plain text input;
+  it just won't show suggestions.
+-->
+<script>
+  window.gm_authFailure = function () {
+    console.error(
+      'Google Maps failed to authenticate. Check that: the API key below is correct, ' +
+      'the Places API and Maps JavaScript API are enabled on the project, billing is active, ' +
+      'and this domain is allowed under the key\'s HTTP referrer restrictions.'
+    );
+  };
+</script>
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_API_KEY&libraries=places&loading=async">
+</script>
 <style>
   :root{
     --navy:#0E2136;
@@ -294,7 +318,9 @@
   }
   .addr-suggestion:last-of-type{ border-bottom:none; }
   .addr-suggestion:hover,
-  .addr-suggestion:focus{ background:#FFF7EE; }
+  .addr-suggestion:focus,
+  .addr-suggestion.active{ background:#FFF7EE; }
+  .addr-loading{ padding:11px 13px; font-size:13px; color:#666; }
   .google-attribution{
     padding:7px 13px;
     text-align:right;
@@ -393,7 +419,6 @@
     .badge-row img{ max-height:48px; }
   }
 </style>
-
 
 </head>
 <body>
@@ -699,11 +724,154 @@
     render();
   }
 
+  /* ---------- Google Places Autocomplete (used on Step 6) ---------- */
+  let placesAutocompleteService = null;
+  let placesDetailsService = null;
+  let placesSessionToken = null;
+  let addrDebounceTimer = null;
+  let addrPredictions = [];
+  let addrActiveIndex = -1;
+
+  function placesReady(){
+    return !!(window.google && google.maps && google.maps.places);
+  }
+
+  function getPlacesServices(){
+    if(!placesReady()) return null;
+    if(!placesAutocompleteService){
+      placesAutocompleteService = new google.maps.places.AutocompleteService();
+    }
+    if(!placesDetailsService){
+      // PlacesService needs a Map or a plain node to attach to; we don't show a map,
+      // so a detached div is fine here.
+      placesDetailsService = new google.maps.places.PlacesService(document.createElement('div'));
+    }
+    if(!placesSessionToken){
+      placesSessionToken = new google.maps.places.AutocompleteSessionToken();
+    }
+    return {
+      autocomplete: placesAutocompleteService,
+      details: placesDetailsService,
+      token: placesSessionToken
+    };
+  }
+
+  function closeAddrSuggestions(){
+    const list = document.getElementById('addrSuggestions');
+    const input = document.getElementById('addrInput');
+    if(list){ list.classList.remove('open'); list.innerHTML = ''; }
+    if(input) input.setAttribute('aria-expanded', 'false');
+    addrPredictions = [];
+    addrActiveIndex = -1;
+  }
+
+  function highlightAddrSuggestion(index){
+    const list = document.getElementById('addrSuggestions');
+    if(!list) return;
+    addrActiveIndex = index;
+    list.querySelectorAll('.addr-suggestion').forEach((btn, i)=>{
+      btn.classList.toggle('active', i === index);
+      btn.setAttribute('aria-selected', i === index ? 'true' : 'false');
+    });
+  }
+
+  function renderAddrSuggestions(predictions){
+    const list = document.getElementById('addrSuggestions');
+    const input = document.getElementById('addrInput');
+    if(!list) return;
+    addrPredictions = predictions || [];
+    addrActiveIndex = -1;
+
+    if(!addrPredictions.length){
+      closeAddrSuggestions();
+      return;
+    }
+
+    list.innerHTML = addrPredictions.map((p, i)=>`
+      <button type="button" class="addr-suggestion" data-index="${i}" role="option" id="addrOpt${i}">${escapeHtml(p.description)}</button>
+    `).join('') + `<div class="google-attribution">Con la tecnología de Google</div>`;
+
+    list.classList.add('open');
+    if(input) input.setAttribute('aria-expanded', 'true');
+
+    list.querySelectorAll('.addr-suggestion').forEach(btn=>{
+      btn.addEventListener('mousedown', (event)=>{
+        // mousedown (not click) so this fires before the input's blur event
+        event.preventDefault();
+        selectAddrSuggestion(Number(btn.dataset.index));
+      });
+    });
+  }
+
+  function fetchAddrPredictions(query){
+    const services = getPlacesServices();
+    if(!services) return; // Google Maps not loaded — fall back to plain manual typing
+    if(!query || query.trim().length < 3){
+      closeAddrSuggestions();
+      return;
+    }
+    services.autocomplete.getPlacePredictions({
+      input: query,
+      sessionToken: services.token,
+      componentRestrictions: { country: 'us' },
+      types: ['address']
+    }, (predictions, status)=>{
+      if(status === google.maps.places.PlacesServiceStatus.OK && predictions){
+        renderAddrSuggestions(predictions);
+      } else {
+        closeAddrSuggestions();
+      }
+    });
+  }
+
+  function selectAddrSuggestion(index){
+    const prediction = addrPredictions[index];
+    if(!prediction) return;
+    const input = document.getElementById('addrInput');
+    const field = document.getElementById('addrField');
+    const status = document.getElementById('addrStatus');
+    const services = getPlacesServices();
+
+    if(!services){
+      if(input) input.value = prediction.description;
+      state.address = prediction.description;
+      closeAddrSuggestions();
+      return;
+    }
+
+    services.details.getDetails({
+      placeId: prediction.place_id,
+      sessionToken: services.token,
+      fields: ['formatted_address', 'geometry']
+    }, (place, detailStatus)=>{
+      if(detailStatus === google.maps.places.PlacesServiceStatus.OK && place){
+        const formatted = place.formatted_address || prediction.description;
+        if(input) input.value = formatted;
+        state.address = formatted;
+        state.addressLat = (place.geometry && place.geometry.location) ? place.geometry.location.lat() : null;
+        state.addressLng = (place.geometry && place.geometry.location) ? place.geometry.location.lng() : null;
+        if(status) status.innerHTML = '<span class="addr-check">✓ Dirección verificada</span>';
+      } else {
+        if(input) input.value = prediction.description;
+        state.address = prediction.description;
+      }
+      if(field) field.classList.remove('invalid');
+      // A getDetails call ends the billing session, so start a fresh token for the next search.
+      placesSessionToken = null;
+      closeAddrSuggestions();
+    });
+  }
+
+  // Close the suggestions list on outside click (attached once, guarded by currentScreen).
+  document.addEventListener('click', (event)=>{
+    if(currentScreen !== 'address') return;
+    const field = document.getElementById('addrField');
+    if(field && !field.contains(event.target)) closeAddrSuggestions();
+  });
+
   /* ---------- Step 6: Address ---------- */
   function screenAddress(){
     currentScreen = 'address';
-    const PLACES_KEY = 'AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ';
-
     body.innerHTML = `
       <h2>¿Dónde desea instalar los paneles solares?</h2>
       <p class="helper">Ingrese la dirección completa de la propiedad.</p>
@@ -717,10 +885,15 @@
             autocomplete="off"
             autocapitalize="words"
             spellcheck="false"
+            role="combobox"
+            aria-expanded="false"
+            aria-autocomplete="list"
+            aria-controls="addrSuggestions"
             value="${escapeHtml(state.address)}">
-          <div class="addr-suggestions" id="addrSuggestions" role="listbox" aria-label="Sugerencias de dirección"></div>
+          <div class="addr-suggestions" id="addrSuggestions" role="listbox"></div>
         </div>
         <span class="err">Ingrese la dirección completa.</span>
+        <div class="addr-status" id="addrStatus">Puede escribirla manualmente y continuar.</div>
       </div>
       <div class="nav-row">
         <button class="btn-back" id="back" type="button">Atrás</button>
@@ -728,134 +901,71 @@
       </div>
     `;
 
-    const input   = document.getElementById('addrInput');
-    const field   = document.getElementById('addrField');
-    const suggBox = document.getElementById('addrSuggestions');
-    let debounceTimer;
-    let sessionToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+    const input = document.getElementById('addrInput');
+    const field = document.getElementById('addrField');
+    const status = document.getElementById('addrStatus');
 
-    /* ---- render dropdown (old Places API format: {description, place_id}) ---- */
-    function showSuggestions(predictions){
-      suggBox.innerHTML = '';
-      if(!predictions || !predictions.length){ suggBox.classList.remove('open'); return; }
-
-      predictions.forEach(pred => {
-        const label   = pred.description || '';
-        const placeId = pred.place_id    || '';
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'addr-suggestion';
-        btn.setAttribute('role', 'option');
-        btn.textContent = label;
-        btn.addEventListener('mousedown', e => e.preventDefault());
-        btn.addEventListener('click', async () => {
-          input.value   = label;
-          state.address = label;
-          state.addressLat = null;
-          state.addressLng = null;
-          field.classList.remove('invalid');
-          suggBox.classList.remove('open');
-
-          /* Fetch formatted address + lat/lng from Place Details */
-          if(placeId){
-            try {
-              const params = new URLSearchParams({
-                place_id: placeId,
-                fields: 'formatted_address,geometry',
-                sessiontoken: sessionToken,
-                key: PLACES_KEY
-              });
-              const r = await fetch('https://maps.googleapis.com/maps/api/place/details/json?' + params);
-              if(r.ok){
-                const d = await r.json();
-                if(d.status === 'OK' && d.result){
-                  if(d.result.formatted_address){ state.address = d.result.formatted_address; input.value = d.result.formatted_address; }
-                  if(d.result.geometry && d.result.geometry.location){
-                    state.addressLat = d.result.geometry.location.lat;
-                    state.addressLng = d.result.geometry.location.lng;
-                  }
-                }
-              }
-            } catch(_){}
-          }
-
-          /* Rotate session token after a completed session */
-          sessionToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-        });
-        suggBox.appendChild(btn);
-      });
-
-      const attr = document.createElement('div');
-      attr.className = 'google-attribution';
-      attr.textContent = 'Powered by Google';
-      suggBox.appendChild(attr);
-      suggBox.classList.add('open');
-    }
-
-    /* ---- fetch autocomplete via Places API ---- */
-    async function fetchSuggestions(query){
-      if(query.length < 2){ suggBox.classList.remove('open'); return; }
-      try {
-        const params = new URLSearchParams({
-          input: query,
-          components: 'country:us',
-          types: 'address',
-          sessiontoken: sessionToken,
-          key: PLACES_KEY
-        });
-        const r = await fetch('https://maps.googleapis.com/maps/api/place/autocomplete/json?' + params);
-        if(!r.ok){ suggBox.classList.remove('open'); return; }
-        const data = await r.json();
-        if(currentScreen !== 'address') return;
-        if(data.status === 'OK'){
-          showSuggestions(data.predictions || []);
-        } else {
-          suggBox.classList.remove('open');
-        }
-      } catch(_){
-        if(currentScreen === 'address') suggBox.classList.remove('open');
-      }
-    }
-
-    /* ---- events ---- */
-    input.addEventListener('input', () => {
-      state.address    = input.value;
+    input.addEventListener('input', ()=>{
+      state.address = input.value;
       state.addressLat = null;
       state.addressLng = null;
       field.classList.remove('invalid');
-      clearTimeout(debounceTimer);
-      const q = input.value.trim();
-      debounceTimer = setTimeout(() => fetchSuggestions(q), 250);
+      status.textContent = 'Puede escribirla manualmente y continuar.';
+
+      clearTimeout(addrDebounceTimer);
+      const query = input.value;
+      addrDebounceTimer = setTimeout(()=>fetchAddrPredictions(query), 220);
     });
 
-    input.addEventListener('blur', () => {
-      setTimeout(() => suggBox.classList.remove('open'), 160);
+    input.addEventListener('keydown', (event)=>{
+      const open = addrPredictions.length > 0;
+
+      if(event.key === 'ArrowDown' && open){
+        event.preventDefault();
+        highlightAddrSuggestion((addrActiveIndex + 1) % addrPredictions.length);
+        return;
+      }
+      if(event.key === 'ArrowUp' && open){
+        event.preventDefault();
+        highlightAddrSuggestion((addrActiveIndex - 1 + addrPredictions.length) % addrPredictions.length);
+        return;
+      }
+      if(event.key === 'Escape' && open){
+        closeAddrSuggestions();
+        return;
+      }
+      if(event.key === 'Enter'){
+        event.preventDefault();
+        if(open){
+          selectAddrSuggestion(addrActiveIndex >= 0 ? addrActiveIndex : 0);
+        } else {
+          closeAddrSuggestions();
+          document.getElementById('next').click();
+        }
+      }
     });
 
-    input.addEventListener('keydown', e => {
-      if(e.key === 'Enter'){ e.preventDefault(); suggBox.classList.remove('open'); document.getElementById('next').click(); }
-      if(e.key === 'Escape'){ suggBox.classList.remove('open'); }
-    });
-
-    document.getElementById('back').addEventListener('click', () => {
-      clearTimeout(debounceTimer); suggBox.classList.remove('open'); screenSun();
-    });
-
-    document.getElementById('next').addEventListener('click', () => {
+    document.getElementById('back').addEventListener('click', screenSun);
+    document.getElementById('next').addEventListener('click', ()=>{
       const value = input.value.trim();
-      if(value.length < 5){ field.classList.add('invalid'); input.focus(); return; }
+
+      if(value.length < 5){
+        field.classList.add('invalid');
+        input.focus();
+        return;
+      }
+
       field.classList.remove('invalid');
       state.address = value;
-      suggBox.classList.remove('open');
+      closeAddrSuggestions();
       screenChecking();
     });
 
     render();
-    setTimeout(() => input.focus(), 0);
+    setTimeout(()=>input.focus(), 0);
   }
 
-    /* ---------- Step 7: Checking ---------- */
+  /* ---------- Step 7: Checking ---------- */
   function screenChecking(){
     currentScreen = 'checking';
     body.innerHTML = `
