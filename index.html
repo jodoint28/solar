@@ -646,10 +646,10 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
       <h2>¿Qué tan soleado es su techo?</h2>
       <p class="helper">Una estimación rápida es suficiente.</p>
       <div class="opt-grid">
-        <button class="opt-btn" data-val="very"><span class="opt-label">${HOUSE_SVG_BRIGHT}<span class="opt-text">Muy Soleado</span></span> <span class="arrow">→</span></button>
-        <button class="opt-btn" data-val="partial"><span class="opt-label">${HOUSE_SVG_PARTIAL}<span class="opt-text">Parcialmente Soleado</span></span> <span class="arrow">→</span></button>
-        <button class="opt-btn" data-val="shady"><span class="opt-label">${HOUSE_SVG_SHADE}<span class="opt-text">Mucha Sombra</span></span> <span class="arrow">→</span></button>
-        <button class="opt-btn" data-val="unsure"><span class="opt-text">No lo sé</span> <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="Muy Soleado"><span class="opt-label">${HOUSE_SVG_BRIGHT}<span class="opt-text">Muy Soleado</span></span> <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="Parcialmente Soleado"><span class="opt-label">${HOUSE_SVG_PARTIAL}<span class="opt-text">Parcialmente Soleado</span></span> <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="Mucha Sombra"><span class="opt-label">${HOUSE_SVG_SHADE}<span class="opt-text">Mucha Sombra</span></span> <span class="arrow">→</span></button>
+        <button class="opt-btn" data-val="No lo sé"><span class="opt-text">No lo sé</span> <span class="arrow">→</span></button>
       </div>
       <div class="nav-row">
         <button class="btn-back" id="back">Atrás</button>
@@ -881,7 +881,19 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(state)
+          body: JSON.stringify({
+            homeowner: state.homeowner,
+            zip: state.zip,
+            utility: state.utility,
+            bill: state.bill,
+            sun: state.sun,
+            address: state.address,
+            addressLat: state.addressLat,
+            addressLng: state.addressLng,
+            fullName: state.fullName,
+            phone: state.phone,
+            email: state.email
+          })
         });
       } catch (error) {
         console.error('Webhook Error:', error);
@@ -919,33 +931,6 @@ window.GOOGLE_MAPS_API_KEY = "AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ"; // Repla
       document.body.appendChild(overlay);
     }
 
-    // ---- Lead payload: send this object to your CRM/webhook endpoint ----
-    const leadPayload = {
-      homeowner: state.homeowner,
-      zip: state.zip,
-      utility: state.utility,
-      monthlyBill: state.bill,
-      roofSunExposure: state.sun,
-      installAddress: state.address,
-      installLat: state.addressLat,
-      installLng: state.addressLng,
-      fullName: state.fullName,
-      phone: state.phone,
-      email: state.email,
-      submittedAt: new Date().toISOString()
-    };
-    // ---- Send lead to HighLevel Inbound Webhook ----
-    fetch('https://services.leadconnectorhq.com/hooks/CLfmsC7D1pozIl8gemPI/webhook-trigger/3725de27-fda9-4fa0-8a0e-bca4af510d45', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(leadPayload)
-    })
-    .then(response => {
-      if (!response.ok) throw new Error('HighLevel webhook returned HTTP ' + response.status);
-      return response.text();
-    })
-    .then(data => console.log('Lead successfully sent to HighLevel:', data))
-    .catch(error => console.error('Error sending lead to HighLevel:', error));
   }
 
   screenHomeowner();
