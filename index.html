@@ -30,7 +30,7 @@
   };
 </script>
 <script async defer
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ&libraries=places&loading=async">
+  src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_API_KEY&libraries=places&loading=async">
 </script>
 <style>
   :root{
@@ -803,10 +803,26 @@
     });
   }
 
+  // Florida bounding box, used to bias Places results toward FL addresses.
+  const FLORIDA_BOUNDS_LITERAL = {
+    south: 24.396, west: -87.635,
+    north: 31.001, east: -79.974
+  };
+
+  function isFloridaPrediction(prediction){
+    // Structured `terms` break the description into comma-separated parts
+    // (street, city, state, country) — check the state part for "FL".
+    if(prediction.terms && prediction.terms.some(t => (t.value || '').trim().toUpperCase() === 'FL')){
+      return true;
+    }
+    // Fallback for predictions that don't expose structured terms.
+    return /,\s*FL\b/i.test(prediction.description || '');
+  }
+
   function fetchAddrPredictions(query){
     const services = getPlacesServices();
     if(!services) return; // Google Maps not loaded — fall back to plain manual typing
-    if(!query || query.trim().length < 3){
+    if(!query || query.trim().length < 2){
       closeAddrSuggestions();
       return;
     }
@@ -814,10 +830,11 @@
       input: query,
       sessionToken: services.token,
       componentRestrictions: { country: 'us' },
+      locationBias: FLORIDA_BOUNDS_LITERAL,
       types: ['address']
     }, (predictions, status)=>{
       if(status === google.maps.places.PlacesServiceStatus.OK && predictions){
-        renderAddrSuggestions(predictions);
+        renderAddrSuggestions(predictions.filter(isFloridaPrediction));
       } else {
         closeAddrSuggestions();
       }
