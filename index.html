@@ -1,23 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <!-- Meta Pixel Code -->
-<script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '1388079083218046');
-fbq('track', 'PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
-/></noscript>
-<!-- End Meta Pixel Code -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Florida Solar Savings — Cotización Solar Gratis</title>
@@ -47,8 +30,31 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   };
 </script>
 <script async defer
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDJ_m7_EZM9MKRkQyk35VGHyAQUwGddFDQ&libraries=places&loading=async">
+  src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_API_KEY&libraries=places&loading=async">
 </script>
+<!--
+  Meta (Facebook) Pixel — used to send a "step reached" event every time a
+  visitor advances to a new quiz question, plus a real "Lead" event when the
+  form is actually submitted. This lets you build a funnel in Events Manager
+  and see exactly which question people abandon on.
+  Replace YOUR_META_PIXEL_ID below with your real Pixel ID from
+  https://business.facebook.com/events_manager
+-->
+<script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', 'YOUR_META_PIXEL_ID');
+  fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=YOUR_META_PIXEL_ID&ev=PageView&noscript=1"
+/></noscript>
 <style>
   :root{
     --navy:#0E2136;
@@ -532,9 +538,69 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
     });
   }
 
+  /* ---------- Funnel step tracking (Meta Pixel) ----------
+     Fires a DISTINCT event name every time someone reaches a new step
+     (rather than one event with a parameter), so each question shows up
+     as its own row/trend line in Events Manager with no extra tooling —
+     step numbers are zero-padded so they sort in funnel order.
+  ---------------------------------------------------------------- */
+  let lastTrackedStep = null;
+  const STEP_LABELS = {
+    homeowner:    'Q1 - Homeowner Check',
+    not_eligible: 'Disqualified - Renter/Mobile Home',
+    zip:          'Q2 - ZIP Code',
+    utility:      'Q3 - Utility Provider',
+    bill:         'Q4 - Monthly Bill',
+    sun:          'Q5 - Roof Sun Exposure',
+    address:      'Q6 - Property Address',
+    checking:     'Loading Screen',
+    name:         'Q7 - Full Name',
+    phone:        'Q8 - Phone Number',
+    email:        'Q9 - Email',
+    success:      'Form Submitted'
+  };
+  const STEP_EVENTS = {
+    homeowner:    'QuizStep01Homeowner',
+    zip:          'QuizStep02Zip',
+    utility:      'QuizStep03Utility',
+    bill:         'QuizStep04Bill',
+    sun:          'QuizStep05Sun',
+    address:      'QuizStep06Address',
+    checking:     'QuizStep07Checking',
+    name:         'QuizStep08Name',
+    phone:        'QuizStep09Phone',
+    email:        'QuizStep10Email',
+    not_eligible: 'QuizDisqualified'
+    // 'success' isn't listed here — it uses Meta's standard "Lead" event below.
+  };
+
+  function trackStep(stepKey){
+    if(stepKey === lastTrackedStep) return; // don't double-fire the same step
+    lastTrackedStep = stepKey;
+
+    if(typeof fbq !== 'function') return; // Pixel not loaded (blocked, offline, or key missing)
+
+    const stepIndex = steps.indexOf(stepKey);
+    const payload = {
+      step_key: stepKey,
+      step_label: STEP_LABELS[stepKey] || stepKey,
+      step_number: stepIndex >= 0 ? stepIndex + 1 : null,
+      total_steps: TOTAL_STEPS
+    };
+
+    if(stepKey === 'success'){
+      // Real conversion — use Meta's standard "Lead" event so it can be used for ad optimization.
+      fbq('track', 'Lead', payload);
+    } else {
+      const eventName = STEP_EVENTS[stepKey] || 'QuizStepView';
+      fbq('trackCustom', eventName, payload);
+    }
+  }
+
   /* ---------- Step 1: Homeowner ---------- */
   function screenHomeowner(){
     currentScreen = 'homeowner';
+    trackStep('homeowner');
     body.innerHTML = `
       <h2>¿Es propietario de una casa unifamiliar?</h2>
       <p class="helper">No apartamento ni casa móvil.</p>
@@ -554,6 +620,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
 
   function screenNotEligible(){
     currentScreen = 'done';
+    trackStep('not_eligible');
     body.innerHTML = `
       <h2>Esta cotización es para propietarios</h2>
       <p class="helper">Por ahora no podemos conectar a inquilinos o residentes de casas móviles con instaladores. ¡Gracias por su interés en la energía solar!</p>
@@ -568,6 +635,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 2: Zip ---------- */
   function screenZip(){
     currentScreen = 'zip';
+    trackStep('zip');
     body.innerHTML = `
       <h2>¿Cuál es su código postal?</h2>
       <div class="field" id="zipField">
@@ -595,6 +663,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 3: Utility provider ---------- */
   function screenUtility(){
     currentScreen = 'utility';
+    trackStep('utility');
     const options = ['FPL','Duke Energy Florida','TECO','Orlando Utilities Commission','LCEC','Otro / no estoy seguro'];
     body.innerHTML = `
       <h2>¿Quién es su proveedor de electricidad?</h2>
@@ -640,6 +709,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
 
   function screenBill(){
     currentScreen = 'bill';
+    trackStep('bill');
     body.innerHTML = `
       <h2>Promedio de factura mensual ($)</h2>
       <p class="helper">Deslice para indicar aproximadamente cuánto paga cada mes.</p>
@@ -720,6 +790,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
 
   function screenSun(){
     currentScreen = 'sun';
+    trackStep('sun');
     body.innerHTML = `
       <h2>¿Qué tan soleado es su techo?</h2>
       <p class="helper">Una estimación rápida es suficiente.</p>
@@ -906,6 +977,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 6: Address ---------- */
   function screenAddress(){
     currentScreen = 'address';
+    trackStep('address');
     body.innerHTML = `
       <h2>¿Dónde desea instalar los paneles solares?</h2>
       <p class="helper">Ingrese la dirección completa de la propiedad.</p>
@@ -1002,6 +1074,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 7: Checking ---------- */
   function screenChecking(){
     currentScreen = 'checking';
+    trackStep('checking');
     body.innerHTML = `
       <h2>Preparando su solicitud personalizada</h2>
       <div class="checklist">
@@ -1036,6 +1109,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 8: Full name ---------- */
   function screenName(){
     currentScreen = 'name';
+    trackStep('name');
     body.innerHTML = `
       <h2>Nombre y Apellido</h2>
       <div class="field" id="nameField">
@@ -1063,6 +1137,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 9: Phone ---------- */
   function screenPhone(){
     currentScreen = 'phone';
+    trackStep('phone');
     body.innerHTML = `
       <h2>¿A qué número de teléfono podemos contactarte?</h2>
       <div class="field" id="phoneField">
@@ -1096,6 +1171,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Step 10: Email ---------- */
   function screenEmail(){
     currentScreen = 'email';
+    trackStep('email');
     body.innerHTML = `
       <h2>¿En qué correo electrónico quieres recibir los resultados?</h2>
       <p class="helper">Le enviaremos su estimado de ahorro solar.</p>
@@ -1155,6 +1231,7 @@ src="https://www.facebook.com/tr?id=1388079083218046&ev=PageView&noscript=1"
   /* ---------- Success ---------- */
   function screenSuccess(){
     currentScreen = 'done';
+    trackStep('success');
     // Hide the normal page chrome entirely — the success screen is just the image.
     const logoHeaderEl = document.querySelector('.logo-header');
     if (logoHeaderEl) logoHeaderEl.style.display = 'none';
